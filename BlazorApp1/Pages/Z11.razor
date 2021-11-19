@@ -1,0 +1,291 @@
+﻿@page "/Z11"
+@*Interfejs*@
+<div class="container" style="width:1200px">
+    <h2>Szyfr podstawieniowy</h2>
+    <div class="">
+        <p>Wprowadź tekst do odszyfrwania:</p>
+        <input id="textToDecode" @bind="TextValue" @oninput="@((e) => { TextValue=(string)e.Value;})" style="width:1100px;"></input>
+        <button class="btn btn-primary my-2" @onclick="LoadText">Wczytaj tekst</button>
+    </div>
+    <div class="my-4">
+      <div class="row">
+        <div class="col-sm">
+          <p>Pary znaków pod kątem częstotliwości występowania w tekście. Lewa  strona: zaszyfrowany tekst, prawa: polski alfabet</p>
+        </div>
+        <div class="col-sm">
+            <p>Liczba wystąpień znaków w zaszyfrowanym tekście:</p>
+        </div>
+        <div class="col-sm">
+            <p>Lista występujących w tekście 1-literowych spójników:</p>
+        </div>
+        <div class="col-sm">
+            <p>Lista zmienionych liter: stara->nowa</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-xl">
+          <textarea id="paryLiter"   style="min-height:200px; min-width:245px">@paryLiter</textarea>
+        </div>
+        <div class="col-xl">
+          <textarea id="lbLiter"  style="min-height:200px; min-width:245px">@lbLiter</textarea>
+        </div>
+        <div class="col-xl">
+          <textarea id="listaSpojnikow"  style="min-height:200px; min-width:245px">@listaSpojnikow</textarea>
+        </div>
+         <div class="col-xl" >
+          <textarea id="zmiany"  style="min-height:200px; min-width:245px">@zmiany</textarea>
+        </div>
+      </div>
+    </div>
+    <div class="my-4 px-3">
+        <div class="row">
+            <p>Oryginalny (zaszyfrowany) tekst:</p>
+        </div>
+        <div class="row">
+          @*  <textarea style="min-height:200px; min-width:1100px">@textToDecode</textarea>*@
+        </div>
+        <div class="row my-3">
+            <input @bind="oldLetter" @oninput="@((e) => { oldLetter=(string)e.Value;})" class="" placeholder="litera do zmiany"/>
+            <input @bind="newLetter" @oninput="@((e) => { newLetter=(string)e.Value;})" class="mx-4" placeholder="nowa litera"/>
+            <button class="btn btn-primary mr-2" @onclick="ChangeLetter">Zamień</button>
+            @if (lastChangedLetter != '*')
+            {
+                 <button class="btn btn-primary" @onclick="Undo">Cofnij ostatnią operację</button>
+            }else{
+                <button class="btn btn-primary disabled">Cofnij ostatnią operację</button>
+            }
+        </div>
+        <div class="row">
+            <p class="text-danger">@message</p>
+        </div>
+        <div class="row">
+            <p>Tekst po zmianach:</p>
+        </div>
+         <div class="row">
+            <textarea id="changedText" style="min-height:200px; min-width:1100px">@changedText</textarea>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? TextValue { get; set; }
+    private string textToDecode = "";
+    private  Dictionary<char, double> polishLettersFrequency = new Dictionary<char, double>();
+    private string oldLetter;
+    private string newLetter;
+    private char oldChar;
+    private char newChar;
+    private string lbLiter = "";
+    private string lbLiterBezSpojnikow = "";
+    private string paryLiter = "";
+    private string listaSpojnikow = "";
+    private string zmiany = "";
+    private Dictionary<char, char> changedLetters = new Dictionary<char, char>();
+    private Dictionary<char, List<int>> lettersIndexInText = new Dictionary<char, List<int>>();
+    private string changedText = "";
+    private string message = "";
+    public char lastChangedLetter ='*';
+    private string textBackup = "";
+
+    private void LoadText()
+    {
+        //Pobieranie wprowadzonego tekstu i usuwanie znaków specjalnych
+        zmiany = "";
+        textToDecode = @TextValue;
+        textToDecode.ToLower();
+        textToDecode = new string((from c in textToDecode
+                                   where char.IsWhiteSpace(c) || char.IsLetterOrDigit(c)
+                                   select c).ToArray());
+        changedText = textToDecode;
+        //Wyczyszczenie historii zmian
+        changedLetters.Clear();
+
+        //Uzupełnienie statystycznej częstotliwość wyst. polskich liter
+        if(polishLettersFrequency.Count==0){
+            polishLettersFrequency.Add('a', 0.099);
+            polishLettersFrequency.Add('b', 0.0147);
+            polishLettersFrequency.Add('c', 0.0436);
+            polishLettersFrequency.Add('d', 0.0325);
+            polishLettersFrequency.Add('e', 0.0877);
+            polishLettersFrequency.Add('f', 0.003);
+            polishLettersFrequency.Add('g', 0.0142);
+            polishLettersFrequency.Add('h', 0.0108);
+            polishLettersFrequency.Add('i', 0.0821);
+            polishLettersFrequency.Add('j', 0.0228);
+            polishLettersFrequency.Add('k', 0.0351);
+            polishLettersFrequency.Add('l', 0.0392);
+            polishLettersFrequency.Add('m', 0.028);
+            polishLettersFrequency.Add('n', 0.0572);
+            polishLettersFrequency.Add('o', 0.086);
+            polishLettersFrequency.Add('p', 0.0313);
+            polishLettersFrequency.Add('q', 0.0014);
+            polishLettersFrequency.Add('r', 0.0469);
+            polishLettersFrequency.Add('s', 0.0498);
+            polishLettersFrequency.Add('t', 0.0398);
+            polishLettersFrequency.Add('u', 0.025);
+            polishLettersFrequency.Add('v', 0.0004);
+            polishLettersFrequency.Add('w', 0.0465);
+            polishLettersFrequency.Add('x', 0.0002);
+            polishLettersFrequency.Add('y', 0.0376);
+            polishLettersFrequency.Add('z', 0.0653);
+        }
+        var polishLFOrdered = polishLettersFrequency.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+
+        //Obliczenie i posortowanie częstotliwości wyst. znaków w zakodowanym tekście
+        Dictionary<char, double> lettersFrequencyInText = GetLettersFrequency(textToDecode);
+        var orderedFinT = lettersFrequencyInText.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+
+        //Zapisujemy indeks położenia poszczególnych liter w tekście - do późniejszej ich podmiany
+        int i = 0;
+        foreach (char letter in textToDecode)
+        {
+            if (!lettersIndexInText.ContainsKey(letter))
+            {
+                lettersIndexInText.Add(letter, new List<int>(i));
+            }
+            lettersIndexInText[letter].Add(i);
+            i++;
+        }
+        //Sprawdzamy występujące 1-literowe spójniki
+        var wordsToDecode = textToDecode.Split(" ");
+        List<string> oneLetterTTD = new List<string>();
+        foreach (string word in wordsToDecode)
+        {
+            if (word.Length == 1)
+            {
+                if (!oneLetterTTD.Contains(word))
+                {
+                    oneLetterTTD.Add(word);
+                }
+            }
+        }
+        //Przypisujemy wg. częstotliwości występowania pary liter z tekstu i alfabetu
+        Dictionary<char, char> letterPairs = new Dictionary<char, char>();
+        int j = 0;
+        foreach (var letter in orderedFinT)
+        {
+            letterPairs.Add(letter.Key, polishLFOrdered.ElementAt(j).Key);
+            j++;
+        }
+
+        //Uzupełniamy komunikaty ułatwiające deszyfracje
+        foreach (var item in orderedFinT)
+        {
+            lbLiter = lbLiter + ("Litera: " + item.Key + ", ilość: " + item.Value + Environment.NewLine);
+        }
+        foreach (var item in letterPairs)
+        {
+            paryLiter = paryLiter + (item.Key + " : " + item.Value + Environment.NewLine);
+        }
+        foreach (var item in oneLetterTTD)
+        {
+            listaSpojnikow = listaSpojnikow + (" " + item + Environment.NewLine);
+        }
+
+    }
+
+    private void ChangeLetter()
+    {
+        oldChar = oldLetter.ToCharArray().First();
+        newChar = newLetter.ToCharArray().First();
+        message = "";
+        if (changedLetters.ContainsKey(oldChar))
+        {
+            message = ("Litera \"" + oldChar + "\" była już zmianiona na: \"" + changedLetters[oldChar] + "\", podaj inną.");
+        }
+        if (changedLetters.ContainsValue(newChar))
+        {
+            message = ("Litera \"" + newChar + "\" była już wykorzystana do zamiany za: \"" + changedLetters.FirstOrDefault(x => x.Value == newChar).Key + "\", podaj inną.");
+        }
+        else
+        {
+            changedLetters.Add(oldChar, newChar);
+            lastChangedLetter = oldChar;
+            textBackup = changedText;
+            zmiany = "";
+            foreach(var item in changedLetters)
+            {
+                zmiany = zmiany + ( item.Key + " -> " + item.Value) + Environment.NewLine;
+            }
+            var indexList = lettersIndexInText[oldChar];
+            foreach (var index in indexList)
+            {
+                if (index > 0)
+                {
+                    changedText = changedText.Remove(index, 1).Insert(index, newChar.ToString());
+                }
+            }
+        }
+    }
+
+    private void Undo()
+    {
+        changedLetters.Remove(lastChangedLetter);
+        zmiany = "";
+        foreach(var item in changedLetters)
+        {
+            zmiany = zmiany + ( item.Key + " -> " + item.Value) + Environment.NewLine;
+        }
+        changedText = textBackup;
+        lastChangedLetter = '*';
+    }
+
+    static Dictionary<char, double> GetLettersFrequency(string textToDecode)
+        {
+            //Zliczamy ilość poszczególnych liter w tekście
+            Dictionary<char, double> lettersFrequencyInText = new Dictionary<char, double>();
+            foreach (char letter in textToDecode)
+            {
+                if (!String.IsNullOrWhiteSpace(letter.ToString()))
+                {
+                    if (!lettersFrequencyInText.ContainsKey(letter))
+                    {
+                        lettersFrequencyInText.Add(letter, 0);
+                    }
+                    lettersFrequencyInText[letter]++;
+                }
+            }
+
+            return lettersFrequencyInText;
+        }
+        static Dictionary<char, double> GetLettersFrequencyW1(string textToDecode)
+        {
+            //Zliczamy ilość poszczególnych liter w tekście
+            Dictionary<char, double> lettersFrequencyInText = new Dictionary<char, double>();
+            var wordsToDecode = textToDecode.Split(" ");
+            string wordsToCount = "";
+            foreach (string word in wordsToDecode)
+            {
+                if (word.Length != 1)
+                {
+                    wordsToCount += word;
+                }
+            }
+
+            foreach (char letter in wordsToCount)
+            {
+                if (!String.IsNullOrWhiteSpace(letter.ToString()))
+                {
+                    if (!lettersFrequencyInText.ContainsKey(letter))
+                    {
+                        lettersFrequencyInText.Add(letter, 0);
+                    }
+                    lettersFrequencyInText[letter]++;
+                }
+            }
+
+            return lettersFrequencyInText;
+        }
+
+        //static string ChangeLetter(string textToChange, char oldLetter, char newLetter, Dictionary<char, List<int>> lettersIndexInText)
+        //{
+        //    var indexList = lettersIndexInText[oldLetter];
+        //    string changedText = textToChange;
+        //    foreach (var index in indexList)
+        //    {
+        //        changedText = changedText.Remove(index, 1).Insert(index, newLetter.ToString());
+        //    }
+        //    return changedText;
+        //}
+       
+}
