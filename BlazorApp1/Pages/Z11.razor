@@ -1,4 +1,6 @@
 ﻿@page "/Z11"
+@inject IJSRuntime JSRuntime
+
 @*Interfejs*@
 <div class="container" style="width:1200px">
     <h2>Szyfr podstawieniowy</h2>
@@ -7,6 +9,8 @@
         <input id="textToDecode" @bind="TextValue" @oninput="@((e) => { TextValue=(string)e.Value;})" style="width:1100px;"></input>
         <button class="btn btn-primary my-2" @onclick="LoadText">Wczytaj tekst</button>
     </div>
+    @if (textToDecode.Length > 0)
+    {
     <div class="my-4">
       <div class="row">
         <div class="col-sm">
@@ -42,7 +46,7 @@
             <p>Oryginalny (zaszyfrowany) tekst:</p>
         </div>
         <div class="row">
-          @*  <textarea style="min-height:200px; min-width:1100px">@textToDecode</textarea>*@
+            <textarea style="min-height:200px; min-width:1100px">@textToDecode</textarea>
         </div>
         <div class="row my-3">
             <input @bind="oldLetter" @oninput="@((e) => { oldLetter=(string)e.Value;})" class="" placeholder="litera do zmiany"/>
@@ -50,13 +54,15 @@
             <button class="btn btn-primary mr-2" @onclick="ChangeLetter">Zamień</button>
             @if (lastChangedLetter != '*')
             {
-                 <button class="btn btn-primary" @onclick="Undo">Cofnij ostatnią operację</button>
+                 <button class="btn btn-primary mx-2" @onclick="Undo">Cofnij ostatnią operację</button>
             }else{
-                <button class="btn btn-primary disabled">Cofnij ostatnią operację</button>
+                <button class="btn btn-primary disabled mx-2">Cofnij ostatnią operację</button>
             }
+            <button class="btn btn-secondary mx-2" @onclick="DownloadFile">Zapisz odszyfrowany tekst</button>
+             <button class="btn btn-danger ml-4" @onclick="LoadText">Resetuj</button>
         </div>
         <div class="row">
-            <p class="text-danger">@message</p>
+            <h4 class="text-danger">@message</h4>
         </div>
         <div class="row">
             <p>Tekst po zmianach:</p>
@@ -65,6 +71,7 @@
             <textarea id="changedText" style="min-height:200px; min-width:1100px">@changedText</textarea>
         </div>
     </div>
+    }
 </div>
 
 @code {
@@ -76,7 +83,6 @@
     private char oldChar;
     private char newChar;
     private string lbLiter = "";
-    private string lbLiterBezSpojnikow = "";
     private string paryLiter = "";
     private string listaSpojnikow = "";
     private string zmiany = "";
@@ -86,19 +92,27 @@
     private string message = "";
     public char lastChangedLetter ='*';
     private string textBackup = "";
+    private string finalText = "";
 
     private void LoadText()
     {
-        //Pobieranie wprowadzonego tekstu i usuwanie znaków specjalnych
+        //Czyszczenie zmiennych
         zmiany = "";
+        paryLiter = "";
+        lbLiter = "";
+        listaSpojnikow = "";
+        changedLetters.Clear();
+
+        //Pobieranie wprowadzonego tekstu i usuwanie znaków specjalnych
+        lettersIndexInText.Clear();
         textToDecode = @TextValue;
         textToDecode.ToLower();
         textToDecode = new string((from c in textToDecode
                                    where char.IsWhiteSpace(c) || char.IsLetterOrDigit(c)
                                    select c).ToArray());
-        changedText = textToDecode;
-        //Wyczyszczenie historii zmian
-        changedLetters.Clear();
+        changedText = textToDecode.Substring(0,40000);
+        finalText = textToDecode;
+        
 
         //Uzupełnienie statystycznej częstotliwość wyst. polskich liter
         if(polishLettersFrequency.Count==0){
@@ -191,11 +205,11 @@
         message = "";
         if (changedLetters.ContainsKey(oldChar))
         {
-            message = ("Litera \"" + oldChar + "\" była już zmianiona na: \"" + changedLetters[oldChar] + "\", podaj inną.");
+            message = ("Litera \"" + oldChar + "\" była już zmianiona na \"" + changedLetters[oldChar] + "\", podaj inną.");
         }
-        if (changedLetters.ContainsValue(newChar))
+        else if (changedLetters.ContainsValue(newChar))
         {
-            message = ("Litera \"" + newChar + "\" była już wykorzystana do zamiany za: \"" + changedLetters.FirstOrDefault(x => x.Value == newChar).Key + "\", podaj inną.");
+            message = ("Litera \"" + newChar + "\" była już wykorzystana do zamiany za \"" + changedLetters.FirstOrDefault(x => x.Value == newChar).Key + "\", podaj inną.");
         }
         else
         {
@@ -210,12 +224,47 @@
             var indexList = lettersIndexInText[oldChar];
             foreach (var index in indexList)
             {
-                if (index > 0)
+                var len = changedText.Length;
+                if (index <= len)
                 {
                     changedText = changedText.Remove(index, 1).Insert(index, newChar.ToString());
                 }
             }
         }
+    }
+
+    public async void DownloadFile()
+    {
+        finalText = finalText.Substring(0, 40000);
+        message = "Generowanie pliku...";
+        Dictionary<char, List<int>> lettersIndex = new Dictionary<char, List<int>>();
+        int i = 0;
+        foreach (char letter in finalText)
+        {
+            if (!lettersIndex.ContainsKey(letter))
+            {
+                lettersIndex.Add(letter, new List<int>(i));
+            }
+            lettersIndex[letter].Add(i);
+            i++;
+        }
+        foreach(var letterPair in changedLetters)
+        {
+            var indexList = lettersIndex[letterPair.Key];
+            var len = finalText.Length;
+            foreach (var index in indexList)
+            {
+                if (index < len)
+                {
+                    finalText = finalText.Remove(index, 1);
+                    finalText = finalText.Insert(index, letterPair.Value.ToString());
+                }
+            }
+        }
+        message = "Zapisywanie pliku...";
+        string fileName = "odszyfrowany_tekst_" + DateTime.Now;
+        await JSRuntime.InvokeAsync<object>("saveFile",fileName,finalText);
+        message = "Gotowe!";
     }
 
     private void Undo()
@@ -250,7 +299,7 @@
         }
         static Dictionary<char, double> GetLettersFrequencyW1(string textToDecode)
         {
-            //Zliczamy ilość poszczególnych liter w tekście
+            //Zliczamy ilość poszczególnych liter w tekście - z pominięciem znaków od długości 1
             Dictionary<char, double> lettersFrequencyInText = new Dictionary<char, double>();
             var wordsToDecode = textToDecode.Split(" ");
             string wordsToCount = "";
@@ -275,17 +324,5 @@
             }
 
             return lettersFrequencyInText;
-        }
-
-        //static string ChangeLetter(string textToChange, char oldLetter, char newLetter, Dictionary<char, List<int>> lettersIndexInText)
-        //{
-        //    var indexList = lettersIndexInText[oldLetter];
-        //    string changedText = textToChange;
-        //    foreach (var index in indexList)
-        //    {
-        //        changedText = changedText.Remove(index, 1).Insert(index, newLetter.ToString());
-        //    }
-        //    return changedText;
-        //}
-       
+        }       
 }
