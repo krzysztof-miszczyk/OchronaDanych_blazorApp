@@ -1,7 +1,116 @@
 ﻿@page "/Z21"
 
-<h1>Z21</h1>
+<div class="container" style="width:1200px">
+    <h2>Szyfr cezara</h2>
+    <div class="">
+        <p>Wprowadź tekst:</p>
+        <input class="form-control" id="textToDecode" @bind="TextValue" @oninput="@((e) => { TextValue = (string)e.Value; })" style="width:1100px;">
+    </div>
+    <p class="mt-2">Wprowadź klucz (wartość numeryczna od 1 do 80):</p>
+    <input class="form-control" style="width:100px" @bind="inputShift" @oninput="@((e) => { inputShift = (string)e.Value; })" />
+    <div class="row">
+        <p class="text-danger">@message</p>
+    </div>
+    @if (inputShift.Length > 0)
+    {
+        <p class="mt-2">Wybierz tryb:</p>
+        <div class="row">
+            <input class="m-2" type="radio" id="encipher" name="mode" value="encipher" @onchange="@(() => SelectionChanged("encipher"))" checked>
+            <label for="encipher">szyfrowanie</label>
+            <input class="m-2" type="radio" id="decipher" name="mode" value="decipher" @onchange="@(() => SelectionChanged("decipher"))">
+            <label for="decipher">deszyfrowanie</label>
+        </div>
+        @if (mode == "encipher")
+        {
+            <button class="btn btn-primary my-2" @onclick="ChangeText">Zaszyfruj tekst</button>
+        }
+        else
+        {
+            <button class="btn btn-primary my-2" @onclick="ChangeText">Odszyfruj tekst</button>
+        }
+
+        <div class="my-4 px-3">
+            <div class="row">
+                <p>Oryginalny tekst:</p>
+            </div>
+            <div class="row">
+                <textarea class="form-control" readonly style="min-height:150px;">@inputText</textarea>
+            </div>
+            <div class="row my-3">
+
+            </div>
+
+            <div class="row">
+                <p>Tekst po zmianach:</p>
+            </div>
+            <div class="row">
+                <textarea class="form-control" readonly id="changedText" style="min-height:150px;">@changedText</textarea>
+            </div>
+        </div>
+    }
+</div>
+
 
 @code {
+    private char[] alphabet = new char[80] { 'A', 'Ą', 'B', 'C', 'Ć', 'D', 'E', 'Ę', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'Ł', 'M', 'N', 'Ń', 'O', 'Ó', 'P', 'Q', 'R', 'S', 'Ś', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Ź', 'Ż', 'a', 'ą', 'b', 'c', 'ć', 'd', 'e', 'ę', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'ł', 'm', 'n', 'ń', 'o', 'ó', 'p', 'q', 'r', 's', 'ś', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'ź', 'ż', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+    private string TextValue { get; set; }
+    private string inputText = "";
+    private string changedText = "";
+    private string message = "";
+    private string inputShift ="";
+    private int shift;
+    private string mode = "encipher";
 
+    private void SelectionChanged(string chosedMode)
+    {
+        if(chosedMode == "decipher")
+        {
+            mode = "decipher";
+        }
+        else
+        {
+            mode = "encipher";
+        }
+    }
+
+    private void ChangeText()
+    {
+        try
+        {
+            shift = Convert.ToInt32(inputShift);
+        }
+        catch
+        {
+            message = "Podałeś błędny klucz. Wprowadź wartość numeryczną od 1 do 80.";
+        }
+
+        inputText = @TextValue;
+        inputText = new string((from c in inputText
+                                where char.IsWhiteSpace(c) || char.IsLetterOrDigit(c)
+                                select c).ToArray());
+        char[] inputArray = inputText.ToCharArray();
+
+        for (int j = 0; j <= inputArray.Length-1; j++)
+        {
+            for (int i = 0; i <= alphabet.Length-1; i++)
+            {
+                if (inputArray[j] == alphabet[i])
+                {
+                    if (mode == "encipher")
+                    {
+                        inputArray[j] = alphabet[(i + shift) % alphabet.Length];
+                        break;
+                    }
+                    else
+                    {
+                        inputArray[j] = alphabet[(i-shift % alphabet.Length + alphabet.Length) % alphabet.Length];
+                        break;
+                    }
+
+                }
+            }
+        }
+        changedText = new string (inputArray);
+
+    }
 }
