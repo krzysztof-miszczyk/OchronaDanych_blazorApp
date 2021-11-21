@@ -1,0 +1,256 @@
+﻿@page "/Z23"
+
+<div class="container" style="width:1200px">
+    <h2>Szyfr Playfair</h2>
+    <div class="">
+        <p>Wprowadź tekst:</p>
+        <input class="form-control" id="textToDecode" @bind="TextValue" @oninput="@((e) => { TextValue = (string)e.Value; })" style="width:1100px;">
+    </div>
+    <p class="mt-2">Wprowadź klucz:</p>
+    <input class="form-control" @bind="inputShift" @oninput="@((e) => { inputShift = (string)e.Value; })" />
+    <div class="row">
+        <p class="text-danger">@message</p>
+    </div>
+    @if (inputShift.Length > 0)
+    {
+        <p class="mt-2">Wybierz tryb:</p>
+        <div class="row">
+            <input class="m-2" type="radio" id="encipher" name="mode" value="encipher" @onchange="@(() => SelectionChanged("encipher"))" checked>
+            <label for="encipher">szyfrowanie</label>
+            <input class="m-2" type="radio" id="decipher" name="mode" value="decipher" @onclick="() => ClearFields()" @onchange="@(() => SelectionChanged("decipher"))">
+            <label for="decipher">deszyfrowanie</label>
+        </div>
+        @if (mode == "encipher")
+        {
+            <button class="btn btn-primary my-2" @onclick="ChangeText">Zaszyfruj tekst</button>
+        }
+        else
+        {
+            <button class="btn btn-primary my-2" @onclick="ChangeText">Odszyfruj tekst</button>
+        }
+
+        <div class="my-4 px-3">
+            <div class="row">
+                <p>Oryginalny tekst:</p>
+            </div>
+            <div class="row">
+                <textarea class="form-control" readonly style="min-height:150px;">@inputText</textarea>
+            </div>
+            <div class="row my-3">
+
+            </div>
+
+            <div class="row">
+                <p>Tekst po zmianach:</p>
+            </div>
+            <div class="row">
+                <textarea class="form-control" readonly id="changedText" style="min-height:150px;">@changedText</textarea>
+            </div>
+        </div>
+    }
+</div>
+
+
+
+@code {
+    private char[] alphabet = new char[25] { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'};
+    private string TextValue { get; set; }
+    private string inputText = "";
+    private string changedText = "";
+    private string message = "";
+    private string inputShift ="";
+    private string mode = "encipher";
+    private int shift;
+    private List<int> shiftValues = new List<int>();
+    private List<char> keyList = new List<char>();
+    private char[,] keySquare = new char[5, 5];
+    private List<char> alphabetList = new List<char>();
+    private string retVal = "";
+    private int e;
+
+    private void SelectionChanged(string chosedMode)
+    {
+        if(chosedMode == "decipher")
+        {
+            mode = "decipher";
+        }
+        else
+        {
+            mode = "encipher";
+        }
+    }
+
+    private void ClearFields()
+    {
+        changedText = String.Empty;
+    }
+
+    private void ChangeText()
+    {
+
+        if (@TextValue.Length == 0)
+        {
+            message = "Musisz wprowadzić tekst";
+            return;
+        }
+
+        if (inputShift.Length==0)
+        {
+            message = "Musisz podać klucz";
+            return;
+        }
+
+        changedText = String.Empty;
+        inputText = @TextValue;
+        inputText = new string((from c in inputText
+                                where char.IsLetter(c)
+                                select c).ToArray());
+        inputText = inputText.ToUpper().Replace("J", "I");
+        inputShift = inputShift.ToUpper().Replace("J", "I").Replace(" ", "");
+        //Sprowadzenie klucza do listy unikalnych znaków
+        foreach (char c in inputShift)
+        {
+            if (!keyList.Contains(c))
+            {
+                keyList.Add(c);
+            }
+        }
+        //Lista zawierajace znaki z poza klucza
+        foreach (char c in alphabet)
+        {
+            if (!keyList.Contains(c))
+            {
+                alphabetList.Add(c);
+            }
+        }
+
+        //Generujemy kwadrat - klucz
+        int k = 0;
+        for(int j = 0; j<25; j++)
+        {
+            var test = j / 5;
+            var test2 = j % 5;
+            if (j < keyList.Count())
+            {
+                keySquare[j / 5, j%5] = keyList[j];
+            }
+            else
+            {
+                keySquare[j / 5, j % 5] = alphabetList[k];
+                k++;
+            }
+
+        }
+
+        string[] inputArray = SplitString(inputText, 2).ToArray();
+
+        // "If there is an odd number of letters, a Z is added to the last letter". - https://www.programmingalgorithms.com/algorithm/playfair-cipher/
+        for (int i=0; i<inputArray.Length;i++)
+        {
+            if (inputArray[i].Length < 2)
+            {
+                inputArray[i] = inputArray[i] + "Z";
+            }
+        }
+
+        //Szyfrowanie
+        foreach(string s in inputArray)
+        {
+            char firstLetter = s.Substring(0, 1).ToCharArray().FirstOrDefault();
+            char secondLetter = s.Substring(1, 1).ToCharArray().FirstOrDefault();
+            int row1 = 0;
+            int col1 = 0;
+            int row2 = 0;
+            int col2 = 0;
+
+            for (int i=0; i < 5;i++)
+            {
+                for (int j = 0; j < 5; j++)
+                {
+                    if (firstLetter == keySquare[i, j])
+                    {
+                        row1 = i;
+                        col1 = j;
+
+                    }
+                    if (secondLetter == keySquare[i, j])
+                    {
+                        row2 = i;
+                        col2 = j;
+                    }
+                }
+            }
+
+            if (mode == "encipher")
+            {
+                e = 1;
+            }
+            else
+            {
+                e = -1;
+            }
+
+            //char newLetter1, newLetter2;
+            //if (col1 == col2)
+            //{
+            //    newLetter1 = keySquare[(row1 + e) % 5, col1];
+            //    newLetter2 = keySquare[(row2 + e) % 5, col1];
+            //}
+
+            if (row1 == row2 && col1 == col2)
+            {
+                retVal += new string(SameRowColumn(ref keySquare, row1, col1, e));
+            }
+            else if (row1 == row2)
+            {
+                retVal += new string(SameRow(ref keySquare, row1, col1, col2, e));
+            }
+            else if (col1 == col2)
+            {
+                retVal += new string(SameColumn(ref keySquare, col1, row1, row2, e));
+            }
+            else
+            {
+                retVal += new string(DifferentRowColumn(ref keySquare, row1, col1, row2, col2));
+            }
+
+            changedText = retVal;
+        }
+    }
+
+    private static char[] SameRow(ref char[,] keySquare, int row, int col1, int col2, int encipher)
+    {
+        return new char[] { keySquare[row, Mod((col1 + encipher), 5)], keySquare[row, Mod((col2 + encipher), 5)] };
+    }
+
+    private static char[] SameColumn(ref char[,] keySquare, int col, int row1, int row2, int encipher)
+    {
+        return new char[] { keySquare[Mod((row1 + encipher), 5), col], keySquare[Mod((row2 + encipher), 5), col] };
+    }
+
+    private static char[] SameRowColumn(ref char[,] keySquare, int row, int col, int encipher)
+    {
+        return new char[] { keySquare[Mod((row + encipher), 5), Mod((col + encipher), 5)], keySquare[Mod((row + encipher), 5), Mod((col + encipher), 5)] };
+    }
+
+    private static char[] DifferentRowColumn(ref char[,] keySquare, int row1, int col1, int row2, int col2)
+    {
+        return new char[] { keySquare[row1, col2], keySquare[row2, col1] };
+    }
+
+    public static List<string> SplitString(string value, int partSize)
+    {
+        List<string> stringParts = new List<string>();
+        for (int i = 0; i < value.Length; i += partSize)
+            if (i + partSize > value.Length)
+                stringParts.Add(value.Substring(i));
+            else
+                stringParts.Add(value.Substring(i, partSize));
+
+        return stringParts;
+    }
+    private static int Mod(int a, int b)
+    {
+        return (a % b + b) % b;
+    }
+}

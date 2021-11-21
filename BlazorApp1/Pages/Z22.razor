@@ -7,7 +7,7 @@
         <input class="form-control" id="textToDecode" @bind="TextValue" @oninput="@((e) => { TextValue = (string)e.Value; })" style="width:1100px;">
     </div>
     <p class="mt-2">Wprowadź klucz:</p>
-    <input class="form-control" style="width:100px" @bind="inputShift" @oninput="@((e) => { inputShift = (string)e.Value; })" />
+    <input class="form-control" @bind="inputShift" @oninput="@((e) => { inputShift = (string)e.Value; })" />
     <div class="row">
         <p class="text-danger">@message</p>
     </div>

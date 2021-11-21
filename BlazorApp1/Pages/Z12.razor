@@ -5,10 +5,12 @@
     <div class="">
         <p>Wprowadź tekst:</p>
         <input class="form-control" id="textToDecode" @bind="TextValue" @oninput="@((e) => { TextValue = (string)e.Value; })" style="width:1100px;">
-        <p>Wprowadź klucz:</p>
-        <input class="form-control" id="textToDecode" @bind="properKey" @oninput="@((e) => { properKey = (string)e.Value; })" style="width:1100px;">
-
-    </div>
+        @if (mode == "decipher")
+        {
+            <p>Wprowadź klucz:</p>
+            <input class="form-control" id="textToDecode" @bind="properKey" @oninput="@((e) => { properKey = (string)e.Value; })" style="width:1100px;">
+        }
+        </div>
 
     <div class="row">
         <p class="text-danger">@message</p>
@@ -31,12 +33,16 @@
 <div class="my-4 px-3">
     @if (mode == "encipher")
     {
-    <div class="row">
-        <p>Podgląd wartości klucza:</p>
-    </div>
-    <div class="row">
-        <textarea class="form-control" readonly style="width:200px; min-height:100px;">@key</textarea>
-    </div>
+        <div class="row">
+            <p>Podgląd wartości klucza:</p>
+        </div>
+        <div class="row">
+            <textarea class="form-control" readonly style="width:200px; min-height:100px;">@key</textarea>
+        </div>
+        <div class="row">
+            <p>Klucz do skopiowania:</p>
+            <input class="form-control" id="textToDecode" @bind="properKey" @oninput="@((e) => { properKey = (string)e.Value; })" style="width:1100px;">
+        </div>
     }
     <div class="row">
         <p>Oryginalny tekst:</p>
@@ -44,10 +50,6 @@
     <div class="row">
         <textarea class="form-control" readonly style="min-height:150px;">@inputText</textarea>
     </div>
-    <div class="row my-3">
-
-    </div>
-
     <div class="row">
         <p>Tekst po zmianach:</p>
     </div>
@@ -179,16 +181,16 @@
         }
     }
 
-    public static List<string> SplitString(string value, int chunkSize)
+    public static List<string> SplitString(string value, int partSize)
     {
-        List<string> triplets = new List<string>();
-        for (int i = 0; i < value.Length; i += chunkSize)
-            if (i + chunkSize > value.Length)
-                triplets.Add(value.Substring(i));
+        List<string> stringParts = new List<string>();
+        for (int i = 0; i < value.Length; i += partSize)
+            if (i + partSize > value.Length)
+                stringParts.Add(value.Substring(i));
             else
-                triplets.Add(value.Substring(i, chunkSize));
+                stringParts.Add(value.Substring(i, partSize));
 
-        return triplets;
+        return stringParts;
     }
 
     private void GenerateKey()
