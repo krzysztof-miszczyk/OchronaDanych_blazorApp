@@ -1,0 +1,235 @@
+﻿@page "/Z12"
+
+<div class="container" style="width:1200px">
+    <h2>Szyfr polialfabetyczny</h2>
+    <div class="">
+        <p>Wprowadź tekst:</p>
+        <input class="form-control" id="textToDecode" @bind="TextValue" @oninput="@((e) => { TextValue = (string)e.Value; })" style="width:1100px;">
+        <p>Wprowadź klucz:</p>
+        <input class="form-control" id="textToDecode" @bind="properKey" @oninput="@((e) => { properKey = (string)e.Value; })" style="width:1100px;">
+
+    </div>
+
+    <div class="row">
+        <p class="text-danger">@message</p>
+    </div>
+    <p class="mt-2">Wybierz tryb:</p>
+    <div class="row">
+        <input class="m-2" type="radio" id="encipher" name="mode" value="encipher" @onchange="@(() => SelectionChanged("encipher"))" checked>
+        <label for="encipher">szyfrowanie</label>
+        <input class="m-2" type="radio" id="decipher" name="mode" value="decipher" @onchange="@(() => SelectionChanged("decipher"))">
+        <label for="decipher">deszyfrowanie</label>
+    </div>
+    @if (mode == "encipher")
+    {
+        <button class="btn btn-primary my-2" @onclick="Encipher">Zaszyfruj tekst</button>
+    }
+    else
+    {
+        <button class="btn btn-primary my-2" @onclick="Decipher">Odszyfruj tekst</button>
+    }
+<div class="my-4 px-3">
+    @if (mode == "encipher")
+    {
+    <div class="row">
+        <p>Podgląd wartości klucza:</p>
+    </div>
+    <div class="row">
+        <textarea class="form-control" readonly style="width:200px; min-height:100px;">@key</textarea>
+    </div>
+    }
+    <div class="row">
+        <p>Oryginalny tekst:</p>
+    </div>
+    <div class="row">
+        <textarea class="form-control" readonly style="min-height:150px;">@inputText</textarea>
+    </div>
+    <div class="row my-3">
+
+    </div>
+
+    <div class="row">
+        <p>Tekst po zmianach:</p>
+    </div>
+    <div class="row">
+        <textarea class="form-control" readonly id="changedText" style="min-height:150px;">@changedText</textarea>
+    </div>
+</div>
+
+</div>
+
+
+@code {
+    private char[] alphabet = new char[87] { 'A', 'Ą', 'B', 'C', 'Ć', 'D', 'E', 'Ę', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'Ł', 'M', 'N', 'Ń', 'O', 'Ó', 'P', 'Q', 'R', 'S', 'Ś', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Ź', 'Ż', 'a', 'ą', 'b', 'c', 'ć', 'd', 'e', 'ę', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'ł', 'm', 'n', 'ń', 'o', 'ó', 'p', 'q', 'r', 's', 'ś', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'ź', 'ż', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_', '\'', ',','.','(',')','"' };
+    private string TextValue { get; set; }
+    private string inputText = "";
+    private string changedText = "";
+    private string message = "";
+    private string key ="";
+    private string properKey = "";
+    private string inputKey = "";
+    private int shift;
+    private string mode = "encipher";
+    private string splittedString = "";
+    private Dictionary<char, List<string>> keyDictionary = new Dictionary<char, List<string>>();
+    private List<int> spaceIndexInText = new List<int>();
+
+    private void Decipher()
+    {
+        if (properKey.Length != alphabet.Length*5)
+        {
+            message = "Podałeś nieprawidłowy klucz.";
+        }
+        else
+        {
+
+            var splittedKey = SplitString(properKey, 5);
+            keyDictionary.Clear();
+            foreach(string keyValue in splittedKey)
+            {
+                char letter = keyValue.Substring(0, 1).ToCharArray().FirstOrDefault();
+                string keyPair1 = keyValue.Substring(1, 2);
+                string keyPair2 = keyValue.Substring(3, 2);
+                
+                keyDictionary.Add(letter, new List<string>());
+                keyDictionary[letter].Add(keyPair1);
+                keyDictionary[letter].Add(keyPair2);
+            }
+
+            changedText = "";
+            inputText = @TextValue;
+
+            var splittedTxt = SplitString(inputText, 2);
+            foreach(var strng in splittedTxt)
+            {
+                var test = strng;
+                var test2 = keyDictionary.FirstOrDefault(x => x.Value.Contains(strng)).Key.ToString();
+                changedText = changedText + keyDictionary.FirstOrDefault(x => x.Value.Contains(strng)).Key.ToString();
+            }
+            changedText = changedText.Replace("_", " ");
+        }
+
+
+    }
+
+    private void Encipher()
+    {
+        try
+        {
+            //shift = Convert.ToInt32();
+        }
+        catch
+        {
+            message = "Podałeś błędny klucz. Wprowadź wartość numeryczną od 1 do 80.";
+        }
+
+        properKey = "";
+        key = "";
+        GenerateKey();
+
+        inputText = @TextValue;
+        inputText = inputText.Replace(" ", "_");
+        //inputText = new string((from c in inputText
+        //                        where char.IsWhiteSpace(c) || char.IsLetterOrDigit(c)
+        //                        select c).ToArray());
+        char[] inputArray = inputText.ToCharArray();
+
+
+        changedText = inputText;
+
+
+        int przesuniecie = 0;
+        for (int j = 0; j <= inputArray.Length - 1; j++)
+        {
+            for (int i = 0; i <= alphabet.Length - 1; i++)
+            {
+                if (inputArray[j] == alphabet[i])
+                {
+                    if (mode == "encipher")
+                    {
+                        Random rnd = new Random();
+                        int r = rnd.Next(0,2); //Do losowego wstawienia 1 lub 2 pary klucza
+
+                        changedText = changedText.Remove(j+przesuniecie, 1).Insert(j+przesuniecie, keyDictionary[alphabet[i]].ElementAt(r).ToString());
+                        przesuniecie += 1;
+                        break;
+                    }
+                    else
+                    {
+                        inputArray[j] = alphabet[(i - shift % alphabet.Length + alphabet.Length) % alphabet.Length];
+                        break;
+                    }
+
+                }
+            }
+        }
+        inputText = inputText.Replace("_", " ");
+
+    }
+
+    private void SelectionChanged(string chosedMode)
+    {
+        if(chosedMode == "decipher")
+        {
+            mode = "decipher";
+        }
+        else
+        {
+            mode = "encipher";
+        }
+    }
+
+    public static List<string> SplitString(string value, int chunkSize)
+    {
+        List<string> triplets = new List<string>();
+        for (int i = 0; i < value.Length; i += chunkSize)
+            if (i + chunkSize > value.Length)
+                triplets.Add(value.Substring(i));
+            else
+                triplets.Add(value.Substring(i, chunkSize));
+
+        return triplets;
+    }
+
+    private void GenerateKey()
+    {
+        Random rnd = new Random();
+        int firstKeyShift = rnd.Next(0, alphabet.Length);
+        int secondKeyShift = rnd.Next(0, alphabet.Length);
+        int thirdKeyShift = rnd.Next(0, alphabet.Length);
+        int fourthKeyShift = rnd.Next(0, alphabet.Length);
+
+        while(firstKeyShift==thirdKeyShift)
+        {
+            thirdKeyShift = rnd.Next(0, alphabet.Length);
+        }
+        while (secondKeyShift == fourthKeyShift)
+        {
+            fourthKeyShift = rnd.Next(0, alphabet.Length);
+        }
+
+        char c1, c2, c3, c4;
+
+
+        int i = 0;
+        foreach (char letter in alphabet)
+        {
+            if (!keyDictionary.ContainsKey(letter))
+            {
+                c1 = alphabet[(i + firstKeyShift) % alphabet.Length];
+                c2 = alphabet[(i + secondKeyShift) % alphabet.Length];
+                c3 = alphabet[(i + thirdKeyShift) % alphabet.Length];
+                c4 = alphabet[(i + fourthKeyShift) % alphabet.Length];
+                string keyPair1 = c1.ToString() + c2.ToString();
+                string keyPair2 = c3.ToString() + c4.ToString();
+
+                keyDictionary.Add(letter, new List<string>());
+                keyDictionary[letter].Add(keyPair1);
+                keyDictionary[letter].Add(keyPair2);
+                key = key + letter + " -> " + keyPair1 + ", " + keyPair2 + Environment.NewLine;
+                properKey = properKey + letter + keyPair1 + keyPair2;
+            }
+            i++;
+        }
+    }
+}
