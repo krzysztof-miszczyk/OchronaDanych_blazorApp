@@ -1,0 +1,198 @@
+﻿@page "/Z31"
+
+<div class="container" style="width:1200px">
+    <div class="row">
+        <h2 class="mb-3">Test fermata</h2>
+    </div>
+    <div class="row">
+        <p>Wprowadź nieparzystą liczbę dodatnią i kliknij zatwierdź, lub naciśnij przycisk "wylosuj liczbę":</p>
+    </div>
+    <div class="row">
+        <input class="form-control" id="textToDecode" @bind="TextValue" @oninput="@((e) => { TextValue = (string)e.Value; })" style="width:400px;">
+        <button class="btn btn-primary ml-2" @onclick="CheckInput" style="width:190px;">Zatwierdź</button>
+    </div>
+    <div class="row">
+        <p class="text-danger">@message</p>
+    </div>
+    <div class="row">
+        <p>Opcjonalnie możesz podać górną granicę losowanej liczby. Maksymalnie: @int.MaxValue.ToString() </p>
+    </div>
+    <div class="row">
+        <input class="form-control" @bind="MaxVal" @oninput="@((e) => { MaxVal = (string)e.Value; })" style="width:400px;">
+        <button class="btn btn-primary ml-2" @onclick="GetRandomNumber" style="width:190px;">Wylosuj liczbę</button>
+    </div>
+    <div class="row mt-5">
+        <p>Wybrana/wylosowana liczba:</p>
+    </div>
+    <div class="row">
+        <input class="form-control" readonly @bind="RandomNumber" style="width:400px; font-weight:bold;">
+    </div>
+    <div class="row mt-3">
+        <p>Wprowadź ilość prób (jeśli pozostawisz pole puste, zostanie wykonana 1):</p>
+    </div>
+    <div class="row">
+        <input class="form-control" @bind="TextQtyValue" @oninput="@((e) => { TextQtyValue = (string)e.Value; })" style="width:400px;">
+        <button class="btn btn-primary ml-2" @onclick="CheckTestQty" style="width:190px;">Zatwierdź</button>
+    </div>
+    <div class="row">
+        <p class="text-danger">@messageTestQty</p>
+    </div>
+    <div class="row">
+        <p>Ilość prób: @testQty.ToString()</p>
+    </div>
+    @if (testQty > 0 && RandomNumber > 0)
+    {
+    <div class="row">
+        <button class="btn btn-primary mt-4" @onclick="FermatTest" style="width:600px;">Wykonaj test</button>
+    </div>
+    <div class="row">
+        <h3 class="my-4" style="color: #a61b0c">@Output</h3>
+    </div>
+    <div class="row">
+        <p>Liczby, z którymi został przeprowadzony test:</p>
+    </div>
+    <div class="row">
+        <textarea readonly style="width:400px;">@testedA</textarea>
+    </div>
+    }
+</div>
+
+
+@code {
+    private string TextValue { get; set; }
+    private string TextQtyValue { get; set; }
+    private int RandomNumber { get; set; }
+    private string Output { get; set; }
+    private string message = "";
+    private string messageTestQty = "";
+    private int testQty = 1;
+    private string MaxVal = int.MaxValue.ToString();
+    private string testedA = "";
+
+    private void CheckInput()
+    {
+        ClearTextFields();
+
+        try
+        {
+            RandomNumber = Convert.ToInt32(TextValue);
+            if(RandomNumber % 2 == 0)
+            {
+                throw new Exception();
+            }
+            if (RandomNumber > int.MaxValue)
+            {
+                throw new Exception();
+            }
+        }
+        catch
+        {
+            message = "Podałeś błędną liczbę. Powinna być to całkowita, nieparzysta liczba dodatnia, mniejsza od " + int.MaxValue;
+        }
+    }
+    private void CheckTestQty()
+    {
+        ClearTextFields();
+
+        try
+        {
+            testQty = Convert.ToInt32(TextQtyValue);
+            if (testQty <= 0)
+            {
+                throw new Exception();
+            }
+        }
+        catch
+        {
+            messageTestQty = "Podałeś błędną ilość prób. Powinna to być całkowita liczba dodatnia.";
+        }
+    }
+
+    private void ClearTextFields()
+    {
+        Output = String.Empty;
+        message = String.Empty;
+        messageTestQty = String.Empty;
+        testedA = String.Empty;
+    }
+
+    private void GetRandomNumber()
+    {
+        ClearTextFields();
+        RandomNumber = 0;
+
+        var rnd = new Random();
+        int rn = rnd.Next(0, Convert.ToInt32(MaxVal));
+        while ( rn % 2 == 0)
+        {
+            rn = rnd.Next(0, Convert.ToInt32(MaxVal));
+        }
+
+        RandomNumber = rn;
+    }
+
+    private void FermatTest()
+    {
+        testedA = String.Empty;
+
+        Output = "Trwa test. Proszę czekać...";
+        int a;
+        var rnd = new Random();
+
+        for(int i =0; i <= testQty; i++)
+        {
+            a = rnd.Next(0,RandomNumber-1);
+
+            if(NWD(a, RandomNumber) > 1)
+            {
+                Output = "Liczba nie jest pierwsza.";
+                testedA += a + ", rezultat: " + Output + Environment.NewLine;
+                break;
+            }
+            else
+            {
+                var u = (CalculatePower(a, RandomNumber) % (ulong)RandomNumber);
+                if (u != 1)
+                {
+                    Output = "Liczba nie jest pierwsza.";
+                    testedA += a +", rezultat: "+Output+ Environment.NewLine;
+                    break;
+                }
+                else
+                {
+                    Output = "Liczba może być pierwsza.";
+                    testedA += a + ", rezultat: " + Output + Environment.NewLine;
+                }
+            }
+        }
+
+    }
+
+    private static int NWD(int a, int b)
+    {
+        while (a != 0 && b != 0)
+        {
+            if (a > b)
+                a %= b;
+            else
+                b %= a;
+        }
+
+        return a | b;
+    }
+
+    private ulong CalculatePower(int aInt, int randomNumberInt)
+    {
+        ulong a = (ulong)aInt;
+        ulong randomNumber = (ulong)randomNumberInt;
+        ulong result = a;
+        for (ulong i = 2; i <= randomNumber - 1; i++)
+        {
+            result = (result * a) % randomNumber;
+            //messageTestQty = "Trwa obliczanie. Postęp: " + i + "/" + (randomNumber - 1);
+        }
+        var x = 1;
+        return result;
+    }
+}
+
