@@ -69,6 +69,7 @@
     private string message = "";
     private string key ="";
     private string properKey = "";
+    private string inputKey = "";
     private int shift;
     private string mode = "encipher";
     private string splittedString = "";
@@ -91,7 +92,7 @@
                 char letter = keyValue.Substring(0, 1).ToCharArray().FirstOrDefault();
                 string keyPair1 = keyValue.Substring(1, 2);
                 string keyPair2 = keyValue.Substring(3, 2);
-                
+
                 keyDictionary.Add(letter, new List<string>());
                 keyDictionary[letter].Add(keyPair1);
                 keyDictionary[letter].Add(keyPair2);

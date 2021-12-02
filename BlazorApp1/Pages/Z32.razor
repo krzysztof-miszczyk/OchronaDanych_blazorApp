@@ -1,0 +1,190 @@
+﻿@page "/Z32"
+@inject IJSRuntime js
+
+<div class="container" style="width:1200px">
+    <div class="row">
+        <h2 class="mb-3">Wybór kluczy</h2>
+    </div>
+    <div class="row">
+        <p>Wygeneruj klucze:</p>
+    </div>
+    <div class="row mt-2">
+        <button class="btn btn-primary ml-2" @onclick="GenerateKeys" style="width:190px;">generuj</button>
+    </div>
+    <div class="row my-2">
+        <p>e: @e, p: @p, q: @q, d: @d, n: @n</p>
+    </div>
+    <div class="row my-2">
+        <p>NWD(e,p): @nwdEP, NWD(e,q): @nwdEQ</p>
+    </div>
+    <div class="row mt-4">
+        <p>{e,n}={@e,@n}</p>
+        <button class="btn btn-secondary mx-2" @onclick="SavePrivateKey">zapisz</button>
+    </div>
+    <div class="row mt-2">
+        <p>{d,n}={@d,@n}</p>
+        <button class="btn btn-secondary mx-2" @onclick="SavePublicKey">zapisz</button>
+    </div>
+</div>
+@code {
+    private int e, p, q;
+    private long d, d2, n, nwdEP, nwdEQ;
+
+
+    void SavePrivateKey()
+    {
+        var ePart = System.Text.Encoding.ASCII.GetBytes(e.ToString());
+        var nPart = System.Text.Encoding.ASCII.GetBytes(n.ToString());
+        byte[] newline = System.Text.Encoding.ASCII.GetBytes(Environment.NewLine);
+
+        var privateKeyBytes = ePart.Concatenate(newline);
+        privateKeyBytes = privateKeyBytes.Concatenate(nPart);
+
+        FileUtil.SaveAs(js, "private.key", privateKeyBytes);
+    }
+    void SavePublicKey()
+    {
+        var publicKey = d.ToString() + Environment.NewLine + n.ToString();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(publicKey);
+        FileUtil.SaveAs(js, "public.key", bytes);
+    }
+
+    private void GenerateKeys()
+    {
+
+        var rnd = new Random();
+        long pq;
+
+        //Generowanie p i q, gdzie „e” i (p-1)*(q-1) będą względnie pierwsze,
+        do
+        {
+            e = rnd.Next(0, 1000000000);
+            p = rnd.Next(0, 1000000000);
+            q = rnd.Next(0, 1000000000);
+            pq = (long)((p - 1) * (q - 1));
+
+            nwdEP = NWD(e, (long)p);
+            nwdEQ = NWD(e, (long)q);
+
+        } while (
+        (NWD(e, pq) != 1) || (nwdEP != 1) || (nwdEQ != 1)
+        );
+
+        //d będzie odwrotna do „e” modulo (p-1)*(q-1), czyli e*d = 1 mod (p-1)*(q-1)
+        //d = GenerateD(e, pq);
+        d = GetD(e, pq);
+        n = (long)p * (long)q;
+
+    }
+
+    private static long GenerateD(int a, long n)
+    {
+        long a0, n0, p0, p1, q, r, t;
+
+        p0 = 0; p1 = 1; a0 = (long)a; n0 = n;
+        q = n0 / a0;
+        r = n0 % a0;
+        while (r > 0)
+        {
+            t = p0 - q * p1;
+            if (t >= 0)
+                t = t % n;
+            else
+                t = n - ((-t) % n);
+            p0 = p1; p1 = t;
+            n0 = a0; a0 = r;
+            q = n0 / a0;
+            r = n0 % a0;
+        }
+        return p1;
+    }
+
+    private long GetD(int e, long n)
+    {
+        long Gprev = n;
+        long G = (long)e;
+        long Vprev = 0;
+        long V = 1;
+        long i = 1;
+        long y, Gnext, Vnext, x, inv_a;
+
+        while (G != 0)
+        {
+            y = Gprev / G;
+            Gnext = Gprev - y * G;
+            Gprev = G;
+            G = Gnext;
+            Vnext = Vprev - y * V;
+            Vprev = V;
+            V = Vnext;
+            i = i + 1;
+        };
+
+        x = Vprev;
+        if (x >= 0)
+        {
+            inv_a = x;
+        }
+        else
+        {
+            inv_a = x + n;
+        }
+
+        if (Gprev == 1)
+        {
+            return inv_a;
+        }
+        else
+        {
+            throw new Exception();
+        }
+
+    }
+
+    private long NWD(int a, long n)
+    {
+        long Gnext;
+        long Gprev = n;
+        long G = (long)a;
+
+        while (G != 0)
+        {
+            Gnext = Gprev % G;
+            Gprev = G;
+            G = Gnext;
+        };
+
+        return Gprev;
+    }
+
+
+
+    //public static class FileUtil
+    //{
+    //    public async static Task SaveAs(IJSRuntime js, string filename, byte[] data)
+    //    {
+    //        await js.InvokeAsync<object>(
+    //            "saveAsFile",
+    //            filename,
+    //            Convert.ToBase64String(data));
+    //    }
+    //}
+
+    //public async Task DownloadPrivateKey()
+    //{
+    //    privateKey = e.ToString() + Environment.NewLine + n.ToString();
+    //    var bytes = System.Text.Encoding.UTF8.GetBytes(privateKey);
+
+    //    await js.InvokeAsync<object>(
+    //           "saveAsFile",
+    //           "privateKey",
+    //           Convert.ToBase64String(bytes));
+    //}
+    //void DownloadFile()
+    //{
+    //    var text = "Hello, world!";
+    //    var bytes = System.Text.Encoding.UTF8.GetBytes(text);
+    //    FileUtil.SaveAs(js, "HelloWorld.txt", bytes);
+    //}
+
+}

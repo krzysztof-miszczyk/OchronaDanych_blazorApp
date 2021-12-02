@@ -2,7 +2,7 @@
 
 <div class="container" style="width:1200px">
     <div class="row">
-        <h2 class="mb-3">Test fermata</h2>
+        <h2 class="mb-3">Test Fermata</h2>
     </div>
     <div class="row">
         <p>Wprowadź nieparzystą liczbę dodatnią i kliknij zatwierdź, lub naciśnij przycisk "wylosuj liczbę":</p>
@@ -68,6 +68,33 @@
     private int testQty = 1;
     private string MaxVal = int.MaxValue.ToString();
     private string testedA = "";
+
+    private ulong CalculatePowerMod(int aInt, int power, int modulo)
+    {
+        ulong a = (ulong)aInt;
+        ulong m = (ulong)power;
+        ulong n = (ulong)modulo;
+        ulong a2;
+        ulong wynik = 1;
+
+        a2 = a % n;
+        if (m % 2 == 1)
+        {
+            wynik = a2;
+            m = m / 2;
+        }
+        do
+        {
+            a2 = a2 * a2 % n;
+            if (m % 2 == 1)
+            {
+                wynik = (wynik * a2) % n;
+                m = m / 2;
+            }
+        } while (m != 0);
+
+        return wynik;
+    }
 
     private void CheckInput()
     {
@@ -139,7 +166,7 @@
         int a;
         var rnd = new Random();
 
-        for(int i =0; i <= testQty; i++)
+        for(int i =0; i < testQty; i++)
         {
             a = rnd.Next(0,RandomNumber-1);
 
@@ -152,6 +179,7 @@
             else
             {
                 var u = (CalculatePower(a, RandomNumber) % (ulong)RandomNumber);
+                //var u = (CalculatePowerMod(a, RandomNumber-1,RandomNumber));
                 if (u != 1)
                 {
                     Output = "Liczba nie jest pierwsza.";

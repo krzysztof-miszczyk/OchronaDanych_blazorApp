@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.JSInterop;
+using System.Linq;
 
 namespace BlazorApp1
 {
@@ -18,8 +20,34 @@ namespace BlazorApp1
             builder.RootComponents.Add<App>("#app");
 
             builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
-
+           
             await builder.Build().RunAsync();
+        }
+    }
+    public static class FileUtil
+    {
+        public async static Task SaveAs(IJSRuntime js, string filename, byte[] data)
+        {
+            await js.InvokeAsync<object>(
+                "saveAsFile",
+                filename,
+                Convert.ToBase64String(data));
+        }
+    }
+    public static class Extension
+    {
+        public static T[] Concatenate<T>(this T[] first, T[] second)
+        {
+            if (first == null)
+            {
+                return second;
+            }
+            if (second == null)
+            {
+                return first;
+            }
+
+            return first.Concat(second).ToArray();
         }
     }
 }
