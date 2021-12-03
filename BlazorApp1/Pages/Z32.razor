@@ -12,42 +12,29 @@
         <button class="btn btn-primary ml-2" @onclick="GenerateKeys" style="width:190px;">generuj</button>
     </div>
     <div class="row my-2">
-        <p>e: @e, p: @p, q: @q, d: @d, n: @n</p>
+        <p class="">e: @e, p: @p, q: @q, d: @d, n: @n</p>
+    </div>
+    <div class="row my-2">
+        <p>NWD(e,p): @nwdEP, NWD(e,q): @nwdEQ</p>
     </div>
     <div class="row my-2">
         <p>NWD(e,p): @nwdEP, NWD(e,q): @nwdEQ</p>
     </div>
     <div class="row mt-4">
-        <p>{e,n}={@e,@n}</p>
+        <h4 class="">{e,n}={@e,@n}</h4>
         <button class="btn btn-secondary mx-2" @onclick="SavePrivateKey">zapisz</button>
     </div>
     <div class="row mt-2">
-        <p>{d,n}={@d,@n}</p>
+        <h4 class="">{d,n}={@d,@n}</h4>
         <button class="btn btn-secondary mx-2" @onclick="SavePublicKey">zapisz</button>
     </div>
 </div>
 @code {
     private int e, p, q;
-    private long d, d2, n, nwdEP, nwdEQ;
+    private long d, d2, nwdEP, nwdEQ;
+    private ulong n;
 
 
-    void SavePrivateKey()
-    {
-        var ePart = System.Text.Encoding.ASCII.GetBytes(e.ToString());
-        var nPart = System.Text.Encoding.ASCII.GetBytes(n.ToString());
-        byte[] newline = System.Text.Encoding.ASCII.GetBytes(Environment.NewLine);
-
-        var privateKeyBytes = ePart.Concatenate(newline);
-        privateKeyBytes = privateKeyBytes.Concatenate(nPart);
-
-        FileUtil.SaveAs(js, "private.key", privateKeyBytes);
-    }
-    void SavePublicKey()
-    {
-        var publicKey = d.ToString() + Environment.NewLine + n.ToString();
-        var bytes = System.Text.Encoding.UTF8.GetBytes(publicKey);
-        FileUtil.SaveAs(js, "public.key", bytes);
-    }
 
     private void GenerateKeys()
     {
@@ -63,40 +50,17 @@
             q = rnd.Next(0, 1000000000);
             pq = (long)((p - 1) * (q - 1));
 
-            nwdEP = NWD(e, (long)p);
-            nwdEQ = NWD(e, (long)q);
+            //nwdEP = NWD(e, (long)p);
+            //nwdEQ = NWD(e, (long)q);
 
         } while (
-        (NWD(e, pq) != 1) || (nwdEP != 1) || (nwdEQ != 1)
+        (NWD(e, pq) != 1)// || (nwdEP != 1) || (nwdEQ != 1)
         );
 
         //d będzie odwrotna do „e” modulo (p-1)*(q-1), czyli e*d = 1 mod (p-1)*(q-1)
-        //d = GenerateD(e, pq);
         d = GetD(e, pq);
-        n = (long)p * (long)q;
+        n = (ulong)p * (ulong)q;
 
-    }
-
-    private static long GenerateD(int a, long n)
-    {
-        long a0, n0, p0, p1, q, r, t;
-
-        p0 = 0; p1 = 1; a0 = (long)a; n0 = n;
-        q = n0 / a0;
-        r = n0 % a0;
-        while (r > 0)
-        {
-            t = p0 - q * p1;
-            if (t >= 0)
-                t = t % n;
-            else
-                t = n - ((-t) % n);
-            p0 = p1; p1 = t;
-            n0 = a0; a0 = r;
-            q = n0 / a0;
-            r = n0 % a0;
-        }
-        return p1;
     }
 
     private long GetD(int e, long n)
@@ -157,34 +121,22 @@
         return Gprev;
     }
 
+    void SavePrivateKey()
+    {
+        var ePart = System.Text.Encoding.ASCII.GetBytes(e.ToString());
+        var nPart = System.Text.Encoding.ASCII.GetBytes(n.ToString());
+        byte[] newline = System.Text.Encoding.ASCII.GetBytes(Environment.NewLine);
 
+        var privateKeyBytes = ePart.Concatenate(newline);
+        privateKeyBytes = privateKeyBytes.Concatenate(nPart);
 
-    //public static class FileUtil
-    //{
-    //    public async static Task SaveAs(IJSRuntime js, string filename, byte[] data)
-    //    {
-    //        await js.InvokeAsync<object>(
-    //            "saveAsFile",
-    //            filename,
-    //            Convert.ToBase64String(data));
-    //    }
-    //}
-
-    //public async Task DownloadPrivateKey()
-    //{
-    //    privateKey = e.ToString() + Environment.NewLine + n.ToString();
-    //    var bytes = System.Text.Encoding.UTF8.GetBytes(privateKey);
-
-    //    await js.InvokeAsync<object>(
-    //           "saveAsFile",
-    //           "privateKey",
-    //           Convert.ToBase64String(bytes));
-    //}
-    //void DownloadFile()
-    //{
-    //    var text = "Hello, world!";
-    //    var bytes = System.Text.Encoding.UTF8.GetBytes(text);
-    //    FileUtil.SaveAs(js, "HelloWorld.txt", bytes);
-    //}
+        FileUtil.SaveAs(js, "private.key", privateKeyBytes);
+    }
+    void SavePublicKey()
+    {
+        var publicKey = d.ToString() + Environment.NewLine + n.ToString();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(publicKey);
+        FileUtil.SaveAs(js, "public.key", bytes);
+    }
 
 }

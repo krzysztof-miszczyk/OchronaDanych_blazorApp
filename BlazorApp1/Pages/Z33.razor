@@ -1,0 +1,128 @@
+﻿@page "/Z33"
+@inject IJSRuntime js
+
+<div class="container" style="width:1200px">
+    <div class="row">
+        <h2 class="mb-3">Szyfr RSA</h2>
+    </div>
+    <div class="row">
+        <p>Wprowadź tekst:</p>
+    </div>
+    <div class="row">
+        <input class="form-control" id="textToDecode" @bind="textValue" @oninput="@((e) => { textValue = (string)e.Value; })" style="width:1100px;">
+    </div>
+    <div class="row">
+        <p class="mt-2">Wybierz tryb:</p>
+    </div>
+    <div class="row">
+        <input class="m-2" type="radio" id="encipher" name="mode" value="encipher" @onchange="@(() => SelectionChanged("encipher"))" checked>
+        <label for="encipher">szyfrowanie</label>
+        <input class="m-2" type="radio" id="decipher" name="mode" value="decipher" @onchange="@(() => SelectionChanged("decipher"))">
+        <label for="decipher">deszyfrowanie</label>
+    </div>
+    <div class="row mt-2">
+        <button class="btn btn-primary ml-2" @onclick="Encipher" style="width:190px;">zaszyfruj</button>
+        <button class="btn btn-primary ml-2" @onclick="Decipher" style="width:190px;">odszyfruj</button>
+    </div>
+    <div class="row my-2">
+        <input class="form-control" readonly @bind="cipherText" />
+    </div>
+    <div class="row my-2">
+        <input class="form-control" readonly @bind="decipherText" />
+    </div>
+    <div class="row my-2">
+
+    </div>
+</div>
+@code {
+    private string textValue { get; set; }
+    private long e = 38273719;
+    private long d = 309536589;
+    private ulong n = 160791261862474200;
+    private string mode = "encipher";
+    private string cipherText = String.Empty;
+    private string decipherText = String.Empty;
+
+    private void Encipher()
+    {
+        List<int> pairList = new List<int>();
+        byte[] plaintext = System.Text.Encoding.ASCII.GetBytes(textValue);
+
+        for(int i=0; i < plaintext.Length; i+=2)
+        {
+            string asciiPair = String.Empty;
+
+            string firstChar = plaintext[i].ToString();
+            if (firstChar.Length < 3) { firstChar = "0" + firstChar; }
+
+            string secondChar = String.Empty;
+            if (i + 1 < plaintext.Length)
+            {
+                secondChar = plaintext[i+1].ToString();
+                if (secondChar.Length < 3) { secondChar = "0" + secondChar; }
+            }
+            else
+            {
+                secondChar = "000";
+            }
+
+            asciiPair = firstChar + secondChar;
+            pairList.Add(Convert.ToInt32(asciiPair));
+        }
+
+        foreach(var pair in pairList)
+        {
+            cipherText = cipherText + PowMod(pair, e, n).ToString()+",";
+        }
+
+    }
+
+    private void Decipher()
+    {
+        var ciphTxt =(Convert.ToInt64(textValue));
+        decipherText = PowMod(ciphTxt, d, n).ToString();
+    }
+
+    private ulong PowMod(long plaintext, long pow, ulong modN) //(a^m) mod n;  c=pair^e mod n
+    {
+        ulong a = (ulong)plaintext;
+        ulong m = (ulong)pow;
+        ulong n = modN; // mod n
+        ulong a2;
+        ulong wynik;
+
+        wynik = 1;
+        a2 = a % n;
+
+        if (m % 2 == 1)
+        {
+            wynik = a2;
+            //return wynik;
+        }
+
+        m = m / 2;
+
+        while (m != 0)
+        {
+            a2 = a2 * a2 % n;
+            if (m % 2 == 1)
+            {
+                wynik = (wynik * a2) % n;
+            }
+            m = m / 2;
+        }
+        return wynik;
+    }
+
+    private void SelectionChanged(string chosedMode)
+    {
+        if (chosedMode == "decipher")
+        {
+            mode = "decipher";
+        }
+        else
+        {
+            mode = "encipher";
+        }
+    }
+}
